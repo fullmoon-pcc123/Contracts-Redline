@@ -1,3 +1,6 @@
+import os
+os.system('pip install openai>=1.0.0 python-docx')
+
 import streamlit as st
 import difflib
 import re
@@ -5,6 +8,7 @@ from openai import OpenAI
 from docx import Document
 import io
 
+# ... (the rest of your code stays exactly the same) ...
 # ==========================================
 # 1. PAGE CONFIGURATION & HTML DIFF LOGIC
 # ==========================================
