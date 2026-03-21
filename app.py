@@ -1,108 +1,149 @@
 import streamlit as st
-from difflib import ndiff
-import pdfplumber
+import json
+from openai import OpenAI
 from docx import Document
-import openai
+import pdfplumber
 import os
 
-# -----------------------------
-# 🔐 OpenAI API Key
-# -----------------------------
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# ==========================================
+# 1. PAGE CONFIGURATION
+# ==========================================
+st.set_page_config(page_title="Surgical AI Redliner", page_icon="📜", layout="wide")
+st.title("📜 Surgical AI Redliner")
+st.markdown("Generates absolute minimal edits and provides negotiation justifications.")
 
-# -----------------------------
-# 📄 Extract text from file
-# -----------------------------
-def extract_text(file):
-    if file.name.endswith(".docx"):
-        doc = Document(file)
-        return "\n".join([para.text for para in doc.paragraphs])
+# ==========================================
+# 2. SIDEBAR (Load Playbook from File)
+# ==========================================
+st.sidebar.header("Configuration")
 
-    elif file.name.endswith(".pdf"):
-        text = ""
-        with pdfplumber.open(file) as pdf:
-            for page in pdf.pages:
-                if page.extract_text():
-                    text += page.extract_text() + "\n"
-        return text
+# Function to read the playbook.txt file from GitHub
+def load_playbook():
+    if os.path.exists("playbook.txt"):
+        with open("playbook.txt", "r", encoding="utf-8") as file:
+            return file.read()
+    return "Error: playbook.txt not found. Please paste rules here."
 
-    return ""
+# Load the text from the file
+default_playbook_text = load_playbook()
 
-# -----------------------------
-# 🤖 AI Editing Function
-# -----------------------------
-def get_ai_edit(text):
+st.sidebar.subheader("Company Playbook")
+playbook_rules = st.sidebar.text_area(
+    "Loaded from playbook.txt:",
+    value=default_playbook_text,
+    height=400
+)
+
+# ==========================================
+# 3. MAIN UI (File Uploader)
+# ==========================================
+st.subheader("1. Upload Contract")
+uploaded_file = st.file_uploader("Upload a Contract (.docx or .pdf)", type=["docx", "pdf"])
+
+extracted_text = ""
+
+if uploaded_file is not None:
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a legal editor. Make only minimal necessary edits. Do not rewrite entire text."
-                },
-                {
-                    "role": "user",
-                    "content": f"Edit this contract:\n{text}"
-                }
-            ]
-        )
-
-        return response['choices'][0]['message']['content']
-
+        if uploaded_file.name.endswith('.docx'):
+            doc = Document(uploaded_file)
+            extracted_text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+        elif uploaded_file.name.endswith('.pdf'):
+            with pdfplumber.open(uploaded_file) as pdf:
+                pages_text =[page.extract_text() for page in pdf.pages if page.extract_text()]
+                extracted_text = "\n".join(pages_text)
+        st.success(f"Successfully extracted text from {uploaded_file.name}!")
     except Exception as e:
-        return f"Error: {str(e)}"
+        st.error(f"Error reading file: {e}")
 
-# -----------------------------
-# 🔍 Diff Function
-# -----------------------------
-def generate_diff(original, edited):
-    diff = ndiff(original.split(), edited.split())
+st.subheader("2. Review Text")
+contract_text = st.text_area("Contract Text:", value=extracted_text, height=200)
 
-    result = []
-    for word in diff:
-        if word.startswith('- '):
-            result.append(f"<del>{word[2:]}</del>")
-        elif word.startswith('+ '):
-            result.append(f"<ins>{word[2:]}</ins>")
-        elif word.startswith('? '):
-            continue
-        else:
-            result.append(word[2:])
+# ==========================================
+# 4. RUN THE SURGICAL AI
+# ==========================================
+if st.button("Generate Surgical Redlines", type="primary"):
+    if "OPENAI_API_KEY" not in st.secrets:
+        st.error("API Key missing in Streamlit Secrets.")
+    elif not contract_text.strip():
+        st.warning("Please upload a document or paste text.")
+    else:
+        with st.spinner("Analyzing playbook and calculating surgical edits..."):
+            try:
+                client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+                
+                # The prompt now FORCES the AI to only output the exact substrings to change
+                prompt = f"""You are a pragmatic, surgical contract reviewer. 
+                Review the text below against this Playbook:
+                {playbook_rules}
+                
+                CRITICAL INSTRUCTIONS:
+                - Make the absolute MINIMAL edits necessary. Do not rewrite for flow or grammar.
+                - Identify ONLY the specific contiguous string of words that violates the playbook, and the specific words to replace them with.
+                - Provide a strong, professional justification for the counterparty explaining why the edit was made.
+                - If the text already complies, return an empty list for "edits".
+                
+                You MUST respond in strict JSON format matching this schema:
+                {{
+                  "edits":[
+                    {{
+                      "exact_old_text": "the exact words from the original text to delete",
+                      "exact_new_text": "the exact words to insert",
+                      "justification": "Professional explanation for the counterparty"
+                    }}
+                  ]
+                }}
+                
+                CLAUSE TO REVIEW:
+                {contract_text}
+                """
+                
+                response = client.chat.completions.create(
+                    model="gpt-4o", 
+                    response_format={ "type": "json_object" }, # Forces strict JSON
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.0
+                )
+                
+                # Parse the JSON response
+                ai_response = json.loads(response.choices[0].message.content)
+                edits = ai_response.get("edits",[])
+                
+                st.divider()
+                st.subheader("Review Results")
+                
+                if not edits:
+                    st.success("✅ This text complies with the playbook. No edits needed.")
+                else:
+                    col1, col2 = st.columns([2, 1])
+                    
+                    # Apply the edits to create the HTML View
+                    html_text = contract_text
+                    
+                    with col2:
+                        st.markdown("### Justifications & Comments")
+                    
+                    # Loop through each surgical edit the AI found
+                    for i, edit in enumerate(edits):
+                        old_text = edit.get("exact_old_text", "")
+                        new_text = edit.get("exact_new_text", "")
+                        justification = edit.get("justification", "")
+                        
+                        # Only replace if the old text actually exists in the original string
+                        if old_text and old_text in html_text:
+                            redline_html = f'<del style="color: #b30000; background-color: #fadbd8; text-decoration: line-through;">{old_text}</del> <ins style="color: #1e8449; background-color: #d5f5e3; text-decoration: none; font-weight: bold;">{new_text}</ins>'
+                            html_text = html_text.replace(old_text, redline_html)
+                        
+                        # Print the justification in the side column like a Word Comment
+                        with col2:
+                            st.info(f"**Edit {i+1}:** {justification}")
+                            
+                    with col1:
+                        st.markdown("### Visual Redlines")
+                        st.markdown(f"""
+                        <div style="background-color: white; color: black; padding: 20px; border-radius: 5px; border: 1px solid #ccc; font-family: 'Times New Roman', serif; font-size: 16px; line-height: 1.6;">
+                            {html_text.replace(chr(10), '<br>')}
+                        </div>
+                        """, unsafe_allow_html=True)
 
-    return " ".join(result)
-
-# -----------------------------
-# 🎯 UI
-# -----------------------------
-st.set_page_config(page_title="AI Contract Redliner", layout="wide")
-
-st.title("📄 AI Contract Redliner (Mini FirstRead)")
-
-uploaded_file = st.file_uploader("Upload Word or PDF", type=["docx", "pdf"])
-
-original_text = ""
-
-if uploaded_file:
-    original_text = extract_text(uploaded_file)
-
-    st.subheader("📥 Extracted Text")
-    st.text_area("Original Contract", original_text, height=250)
-
-    if st.button("✨ Run AI Review"):
-        with st.spinner("AI is reviewing..."):
-            edited_text = get_ai_edit(original_text)
-
-        st.subheader("🤖 AI Edited Version")
-        st.text_area("Edited Text", edited_text, height=250)
-
-        st.subheader("🔍 Redline View")
-
-        diff_html = generate_diff(original_text, edited_text)
-
-        st.markdown(f"""
-        <style>
-        del {{ color: red; text-decoration: line-through; }}
-        ins {{ color: green; text-decoration: underline; }}
-        </style>
-        {diff_html}
-        """, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
