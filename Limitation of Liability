@@ -1,0 +1,95 @@
+PLAYBOOK – LIMITATION OF LIABILITY
+(For Precise AI Redlines & Testing)
+
+A. DESIRED OUTCOME (NON‑NEGOTIABLE)
+
+Supplier’s total aggregate liability = 100% of PO value
+Liability cap applies notwithstanding anything else in the contract
+Consequential / indirect / special / punitive damages are excluded
+Only permitted carve‑outs:
+
+Fraud
+Criminal negligence
+IP infringement
+Confidentiality infringement
+
+
+No claim or action may be brought after two (2) years
+
+
+B. EVALUATION SEQUENCE (MUST BE FOLLOWED IN ORDER)
+Step 1 – Liability Cap Existence
+Check whether the customer clause contains:
+
+An aggregate liability cap
+Applicable to all claims
+With override language (e.g., “notwithstanding anything”, “in any event”)
+
+✅ If cap exists and is ≤ 100% of PO value → ACCEPT CAP (NO INSERT)
+❌ If no effective cap → REDLINE REQUIRED
+
+Step 2 – Consequential Damages
+Check whether liability includes or allows:
+
+Indirect damages
+Consequential damages
+Incidental, special, or punitive damages
+Loss of profit / loss of data
+
+❌ If included → REDLINE REQUIRED (DELETE / EXCLUDE)
+✅ If excluded → NO ACTION
+
+Step 3 – Carve‑outs
+Check carve‑outs to the liability cap.
+✅ Permitted only:
+
+Fraud
+Criminal negligence
+IP infringement
+Confidentiality infringement
+
+❌ If any additional carve‑outs exist → ESCALATE (DO NOT REDLINE)
+
+Step 4 – Time Limitation
+Check whether the clause:
+
+Bars claims after a defined period
+
+✅ If claims barred ≤ 2 years → NO ACTION
+❌ If no time bar or longer period → REDLINE REQUIRED
+
+C. REDLINE ACTION RULES (SURGICAL ONLY)
+Permitted Actions
+
+Insert missing liability cap only if none exists
+Delete references to consequential / indirect damages
+Insert time‑bar sentence
+Preserve acceptable customer override language
+
+Prohibited Actions
+
+Do not rewrite the entire clause
+Do not duplicate an existing acceptable cap
+Do not weaken customer “notwithstanding” language
+Do not add new carve‑outs
+
+
+D. “NO ACTION” RULE (CRITICAL)
+Take NO redline action if the customer clause already:
+
+Caps liability at ≤ 100% of PO value
+Applies notwithstanding other provisions
+Excludes consequential damages
+Limits claims to ≤ 2 years
+Contains only permitted carve‑outs
+
+✅ Clause is acceptable as written.
+
+E. ESCALATION TRIGGERS (NO REDLINES)
+Escalate to legal if:
+
+Liability is uncapped
+Cap exceeds 100% of PO value
+Consequential damages are carved out of the cap
+Carve‑outs include gross negligence (civil), regulatory fines, or third‑party business losses
+Claims are expressly perpetual or non‑waivable
