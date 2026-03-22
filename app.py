@@ -1,10 +1,9 @@
 import streamlit as st
 import json
-import openai 
+from openai import openAi 
 from docx import Document
 import pdfplumber
 import os
-import json
 
 # ==========================================
 # 1. PAGE CONFIGURATION
