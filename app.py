@@ -4,6 +4,7 @@ from openai import OpenAI
 from docx import Document
 import pdfplumber
 import os
+import json
 
 # ==========================================
 # 1. PAGE CONFIGURATION
@@ -13,23 +14,35 @@ st.title("📜 Surgical AI Redliner")
 st.markdown("Generates absolute minimal edits and provides negotiation justifications.")
 
 # ==========================================
-# 2. SIDEBAR (Load Playbook from File)
+# 2. SIDEBAR (Load Playbook from JSON)
 # ==========================================
 st.sidebar.header("Configuration")
 
-# Function to read the playbook.txt file from GitHub
 def load_playbook():
-    if os.path.exists("playbook.txt"):
-        with open("playbook.txt", "r", encoding="utf-8") as file:
-            return file.read()
-    return "Error: playbook.txt not found. Please paste rules here."
+    if os.path.exists("playbook.json"):
+        try:
+            with open("playbook.json", "r", encoding="utf-8") as file:
+                data = json.load(file)
+                
+                # Format the JSON data into a clean, readable string
+                formatted_playbook = ""
+                for clause_name, rules_list in data.items():
+                    formatted_playbook += f"=== {clause_name.upper()} ===\n"
+                    for rule in rules_list:
+                        formatted_playbook += f"- {rule}\n"
+                    formatted_playbook += "\n"
+                    
+                return formatted_playbook.strip()
+        except Exception as e:
+            return f"Error reading JSON: {e}"
+            
+    return "Error: playbook.json not found. Please paste rules here."
 
-# Load the text from the file
 default_playbook_text = load_playbook()
 
 st.sidebar.subheader("Company Playbook")
 playbook_rules = st.sidebar.text_area(
-    "Loaded from playbook.txt:",
+    "Loaded from playbook.json:",
     value=default_playbook_text,
     height=400
 )
