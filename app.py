@@ -1,19 +1,42 @@
 import streamlit as st
 import json
-from openai import OpenAI 
+import os
+from openai import OpenAI
 from docx import Document
 import pdfplumber
-import os
 
 # ==========================================
-# 1. PAGE CONFIGURATION
+# 1. PAGE CONFIGURATION & CHUNKING LOGIC
 # ==========================================
 st.set_page_config(page_title="Surgical AI Redliner", page_icon="📜", layout="wide")
-st.title("📜 Surgical AI Redliner")
-st.markdown("Generates absolute minimal edits and provides negotiation justifications.")
+st.title("📜 Surgical AI Redliner (Loop Processing)")
+st.markdown("Processes the document chunk-by-chunk for 100% accuracy and zero AI laziness.")
+
+def chunk_text(text, max_words=300):
+    """Splits text into chunks of roughly max_words to prevent AI laziness."""
+    paragraphs = text.split('\n')
+    chunks = []
+    current_chunk =[]
+    current_length = 0
+    
+    for para in paragraphs:
+        para = para.strip()
+        if not para: continue
+        words = para.split()
+        if current_length + len(words) > max_words and current_chunk:
+            chunks.append('\n'.join(current_chunk))
+            current_chunk = [para]
+            current_length = len(words)
+        else:
+            current_chunk.append(para)
+            current_length += len(words)
+            
+    if current_chunk:
+        chunks.append('\n'.join(current_chunk))
+    return chunks
 
 # ==========================================
-# 2. SIDEBAR (Load Playbook from JSON)
+# 2. SIDEBAR (Load Playbook)
 # ==========================================
 st.sidebar.header("Configuration")
 
@@ -22,29 +45,19 @@ def load_playbook():
         try:
             with open("playbook.json", "r", encoding="utf-8") as file:
                 data = json.load(file)
-                
-                # Format the JSON data into a clean, readable string
                 formatted_playbook = ""
                 for clause_name, rules_list in data.items():
                     formatted_playbook += f"=== {clause_name.upper()} ===\n"
                     for rule in rules_list:
                         formatted_playbook += f"- {rule}\n"
                     formatted_playbook += "\n"
-                    
                 return formatted_playbook.strip()
         except Exception as e:
             return f"Error reading JSON: {e}"
-            
-    return "Error: playbook.json not found. Please paste rules here."
-
-default_playbook_text = load_playbook()
+    return "Error: playbook.json not found."
 
 st.sidebar.subheader("Company Playbook")
-playbook_rules = st.sidebar.text_area(
-    "Loaded from playbook.json:",
-    value=default_playbook_text,
-    height=400
-)
+playbook_rules = st.sidebar.text_area("Loaded from playbook.json:", value=load_playbook(), height=400)
 
 # ==========================================
 # 3. MAIN UI (File Uploader)
@@ -71,7 +84,7 @@ st.subheader("2. Review Text")
 contract_text = st.text_area("Contract Text:", value=extracted_text, height=200)
 
 # ==========================================
-# 4. RUN THE SURGICAL AI
+# 4. RUN THE SURGICAL AI (THE LOOP)
 # ==========================================
 def load_prompt_template():
     if os.path.exists("prompt.txt"):
@@ -85,63 +98,84 @@ if st.button("Generate Surgical Redlines", type="primary"):
     elif not contract_text.strip():
         st.warning("Please upload a document or paste text.")
     else:
-        with st.spinner("Analyzing playbook and calculating surgical edits..."):
-            try:
-                client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        # Break the text into chunks
+        chunks = chunk_text(contract_text, max_words=300)
+        all_edits =[]
+        
+        # Create UI elements for the loading state
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        try:
+            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            prompt_template = load_prompt_template()
+            
+            # THE MAGICAL LOOP
+            for i, chunk in enumerate(chunks):
+                status_text.text(f"Analyzing section {i+1} of {len(chunks)}...")
                 
-                # 1. Load the prompt from the text file
-                prompt_template = load_prompt_template()
-                
-                # 2. Inject the playbook and contract text into the prompt
                 prompt = prompt_template.format(
                     playbook_rules=playbook_rules,
-                    contract_text=contract_text
+                    contract_chunk=chunk
                 )
                 
-                # 3. Call the AI
                 response = client.chat.completions.create(
                     model="gpt-4o", 
-                    response_format={ "type": "json_object" }, # Forces strict JSON
+                    response_format={ "type": "json_object" }, 
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0
                 )
                 
-                # Parse the JSON response
+                # Parse the JSON for this specific chunk
                 ai_response = json.loads(response.choices[0].message.content)
-                edits = ai_response.get("edits",[])
+                chunk_edits = ai_response.get("edits",[])
                 
-                st.divider()
-                st.subheader("Review Results")
+                # Add these edits to our master list
+                if chunk_edits:
+                    all_edits.extend(chunk_edits)
                 
-                if not edits:
-                    st.success("✅ This text complies with the playbook. No edits needed.")
-                else:
-                    col1, col2 = st.columns([2, 1])
+                # Update progress bar
+                progress_bar.progress((i + 1) / len(chunks))
+            
+            status_text.success("Review Complete!")
+            st.divider()
+            
+            # ==========================================
+            # 5. RENDER THE RESULTS
+            # ==========================================
+            st.subheader("Review Results")
+            
+            if not all_edits:
+                st.success("✅ This text complies with the playbook. No edits needed.")
+            else:
+                col1, col2 = st.columns([2, 1])
+                html_text = contract_text
+                
+                with col2:
+                    st.markdown("### Justifications & Comments")
+                
+                # Apply all accumulated edits to the HTML view
+                edit_counter = 1
+                for edit in all_edits:
+                    old_text = edit.get("exact_old_text", "")
+                    new_text = edit.get("exact_new_text", "")
+                    justification = edit.get("justification", "")
                     
-                    html_text = contract_text
-                    
-                    with col2:
-                        st.markdown("### Justifications & Comments")
-                    
-                    for i, edit in enumerate(edits):
-                        old_text = edit.get("exact_old_text", "")
-                        new_text = edit.get("exact_new_text", "")
-                        justification = edit.get("justification", "")
-                        
-                        if old_text and old_text in html_text:
-                            redline_html = f'<del style="color: #b30000; background-color: #fadbd8; text-decoration: line-through;">{old_text}</del> <ins style="color: #1e8449; background-color: #d5f5e3; text-decoration: none; font-weight: bold;">{new_text}</ins>'
-                            html_text = html_text.replace(old_text, redline_html)
+                    if old_text and old_text in html_text:
+                        redline_html = f'<del style="color: #b30000; background-color: #fadbd8; text-decoration: line-through;">{old_text}</del> <ins style="color: #1e8449; background-color: #d5f5e3; text-decoration: none; font-weight: bold;">{new_text}</ins>'
+                        html_text = html_text.replace(old_text, redline_html, 1) # Replace only the first instance it finds
                         
                         with col2:
-                            st.info(f"**Edit {i+1}:** {justification}")
-                            
-                    with col1:
-                        st.markdown("### Visual Redlines")
-                        st.markdown(f"""
-                        <div style="background-color: white; color: black; padding: 20px; border-radius: 5px; border: 1px solid #ccc; font-family: 'Times New Roman', serif; font-size: 16px; line-height: 1.6;">
-                            {html_text.replace(chr(10), '<br>')}
-                        </div>
-                        """, unsafe_allow_html=True)
+                            st.info(f"**Edit {edit_counter}:** {justification}")
+                        edit_counter += 1
+                        
+                with col1:
+                    st.markdown("### Visual Redlines")
+                    st.markdown(f"""
+                    <div style="background-color: white; color: black; padding: 20px; border-radius: 5px; border: 1px solid #ccc; font-family: 'Times New Roman', serif; font-size: 16px; line-height: 1.6;">
+                        {html_text.replace(chr(10), '<br>')}
+                    </div>
+                    """, unsafe_allow_html=True)
 
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
