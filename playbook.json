@@ -1,1 +1,30 @@
-
+{
+  "Limitation of Liability":[
+    "Liability must be capped at 100% of the Purchase Order (PO) or contract value. A mutual cap stating 'neither party's liability shall exceed the PO value' is acceptable.",
+    "The liability cap must use strong qualifying language, preferably starting with 'Notwithstanding anything to the contrary' or 'In no event'.",
+    "Carve-outs to the liability cap are strictly limited to IP Infringement,criminal negligence, fraud, willful misconduct,confidential breach. Reject any carve-outs for insurance or any other reasons.",
+    "This clause must explicitly exclude consequential, indirect, and special damages, unless there is already a separate standalone clause covering this exclusion."
+  ],
+  "Indemnity":[
+    "All indemnification obligations must be explicitly qualified with 'to the extent caused by supplier negligence'.",
+    "Indemnification for personal injury, death, or property damage is acceptable ONLY IF tied to the extent of supplier's negligence.",
+    "'Knock-for-knock' indemnity structures are acceptable.",
+    "All indemnity obligations must remain subject to the overall limitation of liability cap. The ONLY exception to the cap is for criminal negligence."
+  ],
+  "Warranty":[
+    "Warranties are strictly limited to material and workmanship and terms guranntee be changed to warranty. Reject any warranties regarding design othen than functional design.",
+    "The warranty tenure must be strictly defined as 18 months from the date of supply OR 12 months from the date of installation, whichever is lower.",
+    "Liability for latent defects is strictly capped at a maximum of 3 years."
+    "Software is provided 'AS IS' without implied warranties of merchantability or fitness for a particular purpose.",
+    "We warrant that the software will substantially conform to the documentation for 90 days.",
+    "No guarantee that the software will be uninterrupted or completely error-free."
+  ],
+  "Insurance":[
+    "We can issue insurance certificates naming the customer as an 'Additional Insured'.",
+    "Reject any requirements to carry 'Product Liability Insurance'.",
+    "Reject any requirements for 'Waiver of Subrogation'.",
+    "Reject any requirements for project-specific special insurance. The only acceptable exception is Transit Insurance.",
+    "We will maintain Commercial General Liability insurance with limits not less than $1,000,000 per occurrence.",
+    "We will maintain Cyber Liability insurance with limits of $2,000,000.",
+  ]
+}
