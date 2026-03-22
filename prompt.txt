@@ -5,12 +5,13 @@ COMPANY PLAYBOOK:
 {playbook_rules}
 
 CRITICAL INSTRUCTIONS:
-1. IDENTIFY ALL VIOLATIONS: You must check the text against EVERY rule in the playbook. Do not stop after finding just one violation. Check Liability, Indemnity, Warranty, Insurance, etc.
-2. AGGRESSIVE COMPLIANCE: You must enforce the playbook strictly. For example, if liability is 200%, change it to 100%. If indirect damages are included, exclude them.
-3. SURGICAL TARGETING: To ensure your edits apply correctly, keep your "exact_old_text" snippets as SHORT as possible (target just the specific offending phrase, max 10-15 words, instead of the whole paragraph). Do not rewrite for flow.
+1. CLAUSE-BY-CLAUSE REVIEW: You must read the entire text. You must explicitly evaluate the text against the playbook rules for Limitation of Liability, Indemnity, Warranty, AND Insurance.
+2. AGGRESSIVE COMPLIANCE: You must enforce the playbook strictly. If the customer's draft violates ANY playbook rule, you MUST generate an edit for it. Do not skip any violations.
+3. SURGICAL TARGETING: Keep your "exact_old_text" snippets as SHORT as possible (target just the specific offending phrase, max 10-15 words). Do not rewrite the whole paragraph.
 
-You MUST respond in strict JSON format matching this schema:
+You MUST respond in strict JSON format matching this exact schema:
 {{
+  "step_by_step_analysis": "Write a brief summary of what violations you found in Liability, then Indemnity, then Warranty, then Insurance. You MUST mention all four categories.",
   "edits":[
     {{
       "exact_old_text": "Short, specific snippet from the original text to delete",
