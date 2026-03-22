@@ -1,6 +1,6 @@
 import streamlit as st
 import json
-from openai import openAI 
+from openai import OpenAI 
 from docx import Document
 import pdfplumber
 import os
