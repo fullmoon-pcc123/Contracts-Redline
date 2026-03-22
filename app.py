@@ -73,6 +73,12 @@ contract_text = st.text_area("Contract Text:", value=extracted_text, height=200)
 # ==========================================
 # 4. RUN THE SURGICAL AI
 # ==========================================
+def load_prompt_template():
+    if os.path.exists("prompt.txt"):
+        with open("prompt.txt", "r", encoding="utf-8") as file:
+            return file.read()
+    return "Error: prompt.txt not found."
+
 if st.button("Generate Surgical Redlines", type="primary"):
     if "OPENAI_API_KEY" not in st.secrets:
         st.error("API Key missing in Streamlit Secrets.")
@@ -83,32 +89,16 @@ if st.button("Generate Surgical Redlines", type="primary"):
             try:
                 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
                 
-                # The prompt now FORCES the AI to only output the exact substrings to change
-                prompt = f"""You are a pragmatic, surgical contract reviewer. 
-                Review the text below against this Playbook:
-                {playbook_rules}
+                # 1. Load the prompt from the text file
+                prompt_template = load_prompt_template()
                 
-                CRITICAL INSTRUCTIONS:
-                - Make the absolute MINIMAL edits necessary. Do not rewrite for flow or grammar.
-                - Identify ONLY the specific contiguous string of words that violates the playbook, and the specific words to replace them with.
-                - Provide a strong, professional justification for the counterparty explaining why the edit was made.
-                - If the text already complies, return an empty list for "edits".
+                # 2. Inject the playbook and contract text into the prompt
+                prompt = prompt_template.format(
+                    playbook_rules=playbook_rules,
+                    contract_text=contract_text
+                )
                 
-                You MUST respond in strict JSON format matching this schema:
-                {{
-                  "edits":[
-                    {{
-                      "exact_old_text": "the exact words from the original text to delete",
-                      "exact_new_text": "the exact words to insert",
-                      "justification": "Professional explanation for the counterparty"
-                    }}
-                  ]
-                }}
-                
-                CLAUSE TO REVIEW:
-                {contract_text}
-                """
-                
+                # 3. Call the AI
                 response = client.chat.completions.create(
                     model="gpt-4o", 
                     response_format={ "type": "json_object" }, # Forces strict JSON
@@ -128,24 +118,20 @@ if st.button("Generate Surgical Redlines", type="primary"):
                 else:
                     col1, col2 = st.columns([2, 1])
                     
-                    # Apply the edits to create the HTML View
                     html_text = contract_text
                     
                     with col2:
                         st.markdown("### Justifications & Comments")
                     
-                    # Loop through each surgical edit the AI found
                     for i, edit in enumerate(edits):
                         old_text = edit.get("exact_old_text", "")
                         new_text = edit.get("exact_new_text", "")
                         justification = edit.get("justification", "")
                         
-                        # Only replace if the old text actually exists in the original string
                         if old_text and old_text in html_text:
                             redline_html = f'<del style="color: #b30000; background-color: #fadbd8; text-decoration: line-through;">{old_text}</del> <ins style="color: #1e8449; background-color: #d5f5e3; text-decoration: none; font-weight: bold;">{new_text}</ins>'
                             html_text = html_text.replace(old_text, redline_html)
                         
-                        # Print the justification in the side column like a Word Comment
                         with col2:
                             st.info(f"**Edit {i+1}:** {justification}")
                             
