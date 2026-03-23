@@ -98,8 +98,8 @@ if st.button("Generate Surgical Redlines", type="primary"):
     elif not contract_text.strip():
         st.warning("Please upload a document or paste text.")
     else:
-        # Break the text into chunks
-        chunks = chunk_text(contract_text, max_words=300)
+        # Break the text into chunks (using semantic chunking)
+        chunks = chunk_text(contract_text, max_chars=2500)
         all_edits =[]
         
         # Create UI elements for the loading state
@@ -138,41 +138,57 @@ if st.button("Generate Surgical Redlines", type="primary"):
             st.divider()
             
             # ==========================================
-            # 5. RENDER THE RESULTS
+            # 5. RENDER THE RESULTS (WITH TABS)
             # ==========================================
             st.subheader("Review Results")
             
             if not all_edits:
                 st.success("✅ This text complies with the playbook. No edits needed.")
             else:
-                col1, col2 = st.columns([2, 1])
+                # Use tabs to show Redlines and Clean Text separately
+                tab1, tab2 = st.tabs(["🔴 Visual Redlines", "📄 Clean Final Text"])
+                
                 html_text = contract_text
+                clean_text = contract_text
                 
-                with col2:
-                    st.markdown("### Justifications & Comments")
-                
-                # Apply all accumulated edits to the HTML view
+                # Apply all accumulated edits
                 edit_counter = 1
+                justifications_text = ""
+                
                 for edit in all_edits:
                     old_text = edit.get("exact_old_text", "")
                     new_text = edit.get("exact_new_text", "")
                     justification = edit.get("justification", "")
                     
                     if old_text and old_text in html_text:
+                        # 1. Apply to HTML Redline View
                         redline_html = f'<del style="color: #b30000; background-color: #fadbd8; text-decoration: line-through;">{old_text}</del> <ins style="color: #1e8449; background-color: #d5f5e3; text-decoration: none; font-weight: bold;">{new_text}</ins>'
-                        html_text = html_text.replace(old_text, redline_html, 1) # Replace only the first instance it finds
+                        html_text = html_text.replace(old_text, redline_html, 1) # Replace only the first instance
                         
-                        with col2:
-                            st.info(f"**Edit {edit_counter}:** {justification}")
+                        # 2. Apply to Clean Text View
+                        clean_text = clean_text.replace(old_text, new_text, 1)
+                        
+                        # 3. Save Justification
+                        justifications_text += f"**Edit {edit_counter}:** {justification}\n\n"
                         edit_counter += 1
-                        
-                with col1:
-                    st.markdown("### Visual Redlines")
-                    st.markdown(f"""
-                    <div style="background-color: white; color: black; padding: 20px; border-radius: 5px; border: 1px solid #ccc; font-family: 'Times New Roman', serif; font-size: 16px; line-height: 1.6;">
-                        {html_text.replace(chr(10), '<br>')}
-                    </div>
-                    """, unsafe_allow_html=True)
+                
+                # Render Tab 1 (Redlines + Comments)
+                with tab1:
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        st.markdown(f"""
+                        <div style="background-color: white; color: black; padding: 20px; border-radius: 5px; border: 1px solid #ccc; font-family: 'Times New Roman', serif; font-size: 16px; line-height: 1.6;">
+                            {html_text.replace(chr(10), '<br>')}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with col2:
+                        st.markdown("### Justifications & Comments")
+                        st.info(justifications_text)
+                
+                # Render Tab 2 (Clean Copy-Paste Text)
+                with tab2:
+                    st.markdown("### Ready for Microsoft Word")
+                    st.text_area("Copy this final text:", value=clean_text, height=400)
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
