@@ -114,10 +114,7 @@ if st.button("Generate Surgical Redlines", type="primary"):
             for i, chunk in enumerate(chunks):
                 status_text.text(f"Analyzing section {i+1} of {len(chunks)}...")
                 
-                prompt = prompt_template.format(
-                    playbook_rules=playbook_rules,
-                    contract_chunk=chunk
-                )
+                prompt = prompt_template.replace("{playbook_rules}", playbook_rules).replace("{contract_chunk}", chunk)
                 
                 response = client.chat.completions.create(
                     model="gpt-4o", 
