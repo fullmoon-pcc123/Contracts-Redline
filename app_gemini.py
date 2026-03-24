@@ -105,7 +105,7 @@ if st.button("Generate Surgical Redlines", type="primary"):
             
             # 2. Set up the Gemini 1.5 Pro model with strict JSON formatting
             model = genai.GenerativeModel(
-                'gemini-1.5-pro-latest',
+                'gemini-1.5-flash-latest',
                 generation_config={
                     "response_mime_type": "application/json",
                     "temperature": 0.0
