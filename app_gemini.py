@@ -103,9 +103,9 @@ if st.button("Generate Surgical Redlines", type="primary"):
             # 1. Authenticate with Google Gemini
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-           # 2. Set up the Gemini 1.5 Flash model
+           # 2. Set up the Gemini 2.5 Pro model
             model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
+                'gemini-2.5-pro',
                 generation_config={
                     "response_mime_type": "application/json",
                     "temperature": 0.0
