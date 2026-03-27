@@ -12,28 +12,27 @@ st.set_page_config(page_title="Surgical AI Redliner", page_icon="📜", layout="
 st.title("📜 Surgical AI Redliner (Loop Processing)")
 st.markdown("Processes the document chunk-by-chunk for 100% accuracy and zero AI laziness.")
 
-def chunk_text(text, max_words=300):
-    """Splits text into chunks of roughly max_words to prevent AI laziness."""
-    paragraphs = text.split('\n')
-    chunks = []
-    current_chunk =[]
-    current_length = 0
+def chunk_text(text, max_chars=2500):
+    """Splits text by paragraphs to ensure legal clauses are never cut in half."""
+    import re
+    paragraphs = re.split(r'\n+', text)
+    chunks =[]
+    current_chunk = ""
     
     for para in paragraphs:
         para = para.strip()
         if not para: continue
-        words = para.split()
-        if current_length + len(words) > max_words and current_chunk:
-            chunks.append('\n'.join(current_chunk))
-            current_chunk = [para]
-            current_length = len(words)
+        
+        if len(current_chunk) + len(para) > max_chars and current_chunk:
+            chunks.append(current_chunk.strip())
+            current_chunk = para + "\n\n"
         else:
-            current_chunk.append(para)
-            current_length += len(words)
+            current_chunk += para + "\n\n"
             
     if current_chunk:
-        chunks.append('\n'.join(current_chunk))
+        chunks.append(current_chunk.strip())
     return chunks
+
 
 # ==========================================
 # 2. SIDEBAR (Load Playbook)
